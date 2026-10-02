@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tarefas — REST Gateway</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="layout">
+    <header class="hero">
+      <span class="eyebrow">PROJETO REST · API GATEWAY</span>
+      <h1>Organize o que<br><span>precisa acontecer.</span></h1>
+      <p>Uma lista simples de tarefas, categorias e serviços conectados por um Gateway seguro.</p>
+    </header>
+
+    <section class="panel login-panel" aria-labelledby="login-title">
+      <div class="section-heading">
+        <div><span class="step">01</span><h2 id="login-title">Conectar ao Gateway</h2></div>
+        <span id="connection-state" class="status">Desconectado</span>
+      </div>
+      <form id="login-form" class="login-form">
+        <label>Usuário<input id="username" autocomplete="username" value="aluno" required></label>
+        <label>Senha<input id="password" type="password" autocomplete="current-password" value="projeto123" required></label>
+        <label class="gateway-field">Endereço do Gateway<input id="gateway-url" type="url" value="http://127.0.0.1:8000" required></label>
+        <button type="submit" class="button button-dark">Conectar</button>
+      </form>
+      <p class="hint">Credenciais locais de demonstração. O Gateway emite um token JWT para as chamadas protegidas.</p>
+    </section>
+
+    <section class="panel task-panel" aria-labelledby="task-title">
+      <div class="section-heading">
+        <div><span class="step">02</span><h2 id="task-title">Nova tarefa</h2></div>
+      </div>
+      <form id="task-form" class="task-form">
+        <label class="title-field">O que você precisa fazer?<input id="task-name" maxlength="120" placeholder="Ex.: Finalizar a documentação" required></label>
+        <label>Categoria<select id="category-select" required><option value="">Conecte-se para carregar...</option></select></label>
+        <button type="submit" class="button button-accent">Adicionar tarefa <span aria-hidden="true">＋</span></button>
+      </form>
+    </section>
+
+    <section class="panel list-panel" aria-labelledby="list-title">
+      <div class="section-heading">
+        <div><span class="step">03</span><h2 id="list-title">Sua lista</h2></div>
+        <button id="refresh-button" class="text-button" type="button" disabled>Atualizar ↻</button>
+      </div>
+      <p id="message" class="message" role="status">Conecte-se ao Gateway para carregar as tarefas.</p>
+      <ul id="task-list" class="task-list"></ul>
+    </section>
+    <footer>Cliente Web → Gateway REST → APIs internas de tarefas e categorias</footer>
+  </main>
+</body>
+</html>
