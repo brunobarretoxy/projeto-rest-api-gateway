@@ -17,6 +17,7 @@ Including another URLconf
 
 
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import include, path
 
 from drf_spectacular.views import (
@@ -25,8 +26,13 @@ from drf_spectacular.views import (
 )
 
 
+def health(request):
+    return JsonResponse({"status": "ok", "service": "tasks"})
+
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("health", health, name="health"),
 
     path(
         "schema",
