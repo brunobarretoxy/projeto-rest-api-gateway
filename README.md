@@ -21,6 +21,7 @@ O navegador conversa somente com o Gateway. As APIs internas têm rotas própria
 - `web/`: Cliente Web estático.
 - `docs/contrato-api.md`: contrato de integração.
 - `docs/execucao-e-apresentacao.md`: preparação local, rede do laboratório e roteiro de demonstração.
+- `docs/guia-apresentacao-e-defesa.md`: explicação da arquitetura, conceitos, roteiro oral, perguntas prováveis e checklist de defesa.
 - `docs/status-e-divisao-do-projeto.md`: estado atual e pendências ambientais.
 
 ## Preparar o ambiente no Windows
