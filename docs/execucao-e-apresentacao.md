@@ -76,27 +76,27 @@ Pop-Location
 
 ## Demonstração em duas máquinas na rede do laboratório
 
-A topologia mais simples é executar Gateway e as duas APIs na máquina servidora, mantendo as APIs internas acessíveis apenas localmente. O Cliente Web pode ser servido na máquina principal. Apenas a porta 8000 do servidor precisa ser acessível pelo navegador cliente.
+A topologia mais simples, especialmente se o outro notebook não tem Python, é executar os quatro componentes na máquina servidora. O segundo notebook só precisa de um navegador. As APIs internas ficam acessíveis apenas localmente; os notebooks clientes acessam o site na porta 5500 e o Gateway na porta 8000.
 
-1. Descubra o IPv4 da máquina servidora com `ipconfig` (exemplo: `192.168.1.50`).
+1. Descubra o IPv4 da máquina servidora com `ipconfig`. Use o endereço IPv4 listado na interface Wi-Fi ativa (por exemplo, `192.168.1.174`); não copie literalmente um IP de exemplo.
 2. No `.env` do servidor, ajuste:
 
 ```dotenv
-CORS_ORIGINS=http://localhost:5500,http://127.0.0.1:5500
+CORS_ORIGINS=http://localhost:5500,http://127.0.0.1:5500,http://192.168.1.174:5500
 DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
 TASKS_API_URL=http://127.0.0.1:8001
 CATEGORIES_API_URL=http://127.0.0.1:8002
 ```
 
-3. No `web/config.js` servido na máquina principal, configure o endereço público do Gateway:
+3. O endereço do Gateway no Cliente Web é montado a partir do host pelo qual a página foi aberta. Portanto, configure `gatewayBaseUrl` apenas se usar um endereço diferente; se necessário, edite `web/config.js`:
 
 ```javascript
 window.APP_CONFIG = {
-  gatewayBaseUrl: "http://192.168.1.50:8000",
+  gatewayBaseUrl: "http://192.168.1.174:8000",
 };
 ```
 
-Substitua pelo IPv4 real. Caso o navegador abra a página pelo IP da máquina principal em vez de `localhost`, inclua essa origem também em `CORS_ORIGINS`, por exemplo `http://192.168.1.60:5500`.
+Substitua pelo IPv4 real da máquina servidora. Como o site também será servido pelo computador servidor, a origem que precisa estar em `CORS_ORIGINS` é `http://<IP-DO-SERVIDOR>:5500`.
 
 4. Inicie o Gateway permitindo conexões de rede na máquina servidora:
 
@@ -104,11 +104,15 @@ Substitua pelo IPv4 real. Caso o navegador abra a página pelo IP da máquina pr
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir gateway --host 0.0.0.0 --port 8000
 ```
 
-As APIs internas podem continuar ligadas somente a `127.0.0.1`, pois o Gateway e elas estão na mesma máquina.
+As APIs internas podem continuar ligadas somente a `127.0.0.1`, pois o Gateway e elas estão na mesma máquina. Em outro terminal da máquina servidora, inicie o Cliente Web aceitando conexões pela rede:
 
-5. Se o Firewall do Windows solicitar, permita o acesso à porta 8000 na rede privada do laboratório. Não abra as portas 8001 e 8002 para o cliente; o Gateway deve ser o ponto de entrada.
-6. Na máquina principal, inicie o Cliente Web e abra `http://localhost:5500`.
-7. Se a página não conseguir acessar o Gateway, confira o endereço em `web/config.js`, a origem em `CORS_ORIGINS`, o firewall e se os três serviços da máquina servidora estão ativos.
+```powershell
+.\.venv\Scripts\python.exe -m http.server 5500 --directory web --bind 0.0.0.0
+```
+
+5. No Firewall do Windows da máquina servidora, permita conexões de entrada nas portas `5500` e `8000` para a rede privada. Não abra as portas `8001` e `8002` para os clientes; o Gateway é o ponto de entrada das APIs.
+6. No outro notebook, abra `http://<IP-DO-SERVIDOR>:5500` no navegador. Não use `localhost` nem `127.0.0.1`: esses endereços apontariam para o próprio notebook cliente.
+7. Se ainda houver timeout, confirme que os dois notebooks estão na mesma rede, que o servidor mantém os quatro processos ligados e que o IP não mudou. Se o site abrir mas não carregar os dados, confira `CORS_ORIGINS` e reinicie o Gateway.
 
 A rede e as políticas do laboratório podem impor restrições que o código não consegue resolver. Faça esse teste presencialmente antes do dia da apresentação.
 
