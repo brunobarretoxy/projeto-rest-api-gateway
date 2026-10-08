@@ -13,18 +13,18 @@ Este documento é o acordo de integração para que as partes possam ser desenvo
 
 ## Rotas públicas do Gateway
 
-| Método e rota         | Autenticação | Uso                                                                                       |
-| --------------------- | ------------ | ----------------------------------------------------------------------------------------- |
-| `GET /health`         | Não          | Verificar Gateway                                                                         |
-| `POST /auth/register` | Não          | Criar conta com `username`, `email` e `password`; retorna JWT                          |
-| `POST /auth/token`    | Não          | Entrar com conta existente e receber JWT                                                  |
-| `GET /auth/me`        | Bearer JWT   | Consultar usuário associado ao token                                                      |
-| `GET /api/tasks`      | Bearer JWT   | Listar tarefas                                                                            |
-| `GET /api/tasks/{id}` | Bearer JWT   | Consultar tarefa                                                                          |
-| `PATCH /api/tasks/{id}` | Bearer JWT | Atualizar estado com `{"completed":true}` ou `false`                                   |
-| `POST /api/tasks`     | Bearer JWT   | Criar tarefa com `{"title":"...","category_id":"estudo"}`                                 |
-| `GET /api/categories` | Bearer JWT   | Listar categorias                                                                         |
-| `GET /docs`           | Não          | Swagger UI do Gateway                                                                     |
+| Método e rota           | Autenticação | Uso                                                           |
+| ----------------------- | ------------ | ------------------------------------------------------------- |
+| `GET /health`           | Não          | Verificar Gateway                                             |
+| `POST /auth/register`   | Não          | Criar conta com `username`, `email` e `password`; retorna JWT |
+| `POST /auth/token`      | Não          | Entrar com conta existente e receber JWT                      |
+| `GET /auth/me`          | Bearer JWT   | Consultar usuário associado ao token                          |
+| `GET /api/tasks`        | Bearer JWT   | Listar tarefas                                                |
+| `GET /api/tasks/{id}`   | Bearer JWT   | Consultar tarefa                                              |
+| `PATCH /api/tasks/{id}` | Bearer JWT   | Atualizar estado com `{"completed":true}` ou `false`          |
+| `POST /api/tasks`       | Bearer JWT   | Criar tarefa com `{"title":"...","category_id":"estudo"}`     |
+| `GET /api/categories`   | Bearer JWT   | Listar categorias                                             |
+| `GET /docs`             | Não          | Swagger UI do Gateway                                         |
 
 Cadastro usa `username` (3–32 caracteres), `email` válido e `password` (8–128 caracteres); um e-mail não pode ser reutilizado. O cadastro bem-sucedido cria a conta e já devolve um JWT. O login usa username e senha. Nomes de usuário e e-mails são normalizados para minúsculas e únicos sem distinção de maiúsculas. Senhas nunca são armazenadas em texto puro. Rotas protegidas recebem `Authorization: Bearer <token>`. As respostas de coleção têm `data` e `_links`; links contêm `href` e `method`. O cliente deve navegar pelos links devolvidos pelo Gateway, em vez de fixar rotas dos microserviços.
 

@@ -9,7 +9,7 @@ Aplicação acadêmica de organização de tarefas por categoria, usada para dem
 | Bruno — Gateway             | Cadastro/login, autenticação JWT, roteamento, HATEOAS e documentação da entrada pública | FastAPI + SQLite               |
 | Patricia — API de tarefas   | Criar, listar, consultar, concluir e persistir tarefas                                  | Django REST Framework + SQLite |
 | Gustavo — API de categorias | Listar categorias com IDs estáveis                                                      | FastAPI                        |
-| Cliente Web — grupo         | Login, escolher categoria, criar, filtrar e concluir tarefas                           | HTML, CSS e JavaScript         |
+| Cliente Web — grupo         | Login, escolher categoria, criar, filtrar e concluir tarefas                            | HTML, CSS e JavaScript         |
 
 O navegador conversa somente com o Gateway. As APIs internas têm rotas próprias e o Gateway as chama por HTTP.
 
