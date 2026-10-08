@@ -1,117 +1,59 @@
-# Status, pendências e divisão do projeto
+# Organizaê Parêa — status e divisão do projeto
 
-Este documento resume o que já existe no repositório, o que ainda precisa ser concluído e como o trabalho pode ser dividido sem bloquear os integrantes. Ele complementa o [contrato das APIs](contrato-api.md), que define rotas e formatos de dados para a integração.
+Este documento acompanha o estado do trabalho acadêmico do Organizaê Parêa e as últimas verificações necessárias antes da apresentação.
 
-## 1. Visão geral
+## Objetivo e arquitetura
 
-O projeto é uma aplicação de lista de tarefas com categorias, organizada em quatro partes:
-
-1. **Cliente Web:** interface usada pela pessoa que acessa o sistema.
-2. **Gateway REST:** único ponto de entrada do cliente; valida JWT e encaminha pedidos.
-3. **API de tarefas:** cria e consulta tarefas.
-4. **API de categorias:** fornece as categorias disponíveis.
-
-Fluxo esperado:
+O sistema permite consultar tarefas, criar uma tarefa com categoria e consultar as categorias disponíveis. O Cliente Web conversa apenas com o Gateway; o Gateway valida JWT, encaminha as chamadas HTTP para os microserviços e retorna links HATEOAS.
 
 ```text
-Pessoa usuária → Cliente Web → Gateway (JWT e HATEOAS) → API de tarefas / API de categorias
+Pessoa → Cliente Web → Gateway (JWT/HATEOAS) → API de tarefas
+                                             → API de categorias
 ```
 
-O cliente web deve chamar somente o Gateway. As APIs de tarefas e categorias são serviços internos e não devem ser acessadas diretamente pelo navegador.
+## Estado implementado
 
-## 2. O que já foi feito
+- **Gateway (FastAPI):** cadastra contas, armazena senhas com hash scrypt em SQLite, autentica e emite JWT; protege as rotas de tarefas e categorias; encaminha chamadas HTTP; devolve links HATEOAS; documenta rotas e erros de autenticação no Swagger; lê endereços, segredo JWT e origens CORS do `.env`.
+- **API de tarefas (Django REST Framework):** cria, lista, consulta e atualiza conclusão de tarefas; valida IDs de categoria; persiste dados em SQLite associados ao usuário enviado pelo Gateway; expõe `/health` e Swagger; apresenta campos públicos `title`, `category_id` e `completed` compatíveis com o Gateway.
+- **API de categorias (FastAPI):** expõe `/categories` e `/health`, documenta-se em Swagger e mantém IDs estáveis: `estudo`, `trabalho`, `pessoal`, `projetos` e `exercicio`.
+- **Cliente Web:** oferece cadastro/login, criação e conclusão de tarefas, filtros (todas/a fazer/feitas), contagem de progresso, microanimações, mensagens de erro e logout. O endereço do Gateway fica em `web/config.js`, não é apresentado ao usuário.
+- **Testes:** há testes de cadastro/login, hash scrypt, JWT, contrato da API de tarefas, isolamento entre usuários, categorias e um teste ponta a ponta que inicia os três serviços e acessa tarefas através do Gateway.
+- **Documentação de execução:** [guia de execução e apresentação](execucao-e-apresentacao.md) e [contrato das APIs](contrato-api.md).
 
-- Criada a estrutura inicial para Gateway, dois serviços, cliente web e documentação.
-- **Gateway:** há rotas para emissão de token de demonstração, consulta/criação de tarefas e consulta de categorias. As rotas de dados exigem JWT; as respostas incluem links HATEOAS. Também há tratamento básico de indisponibilidade de serviço e documentação Swagger automática.
-- **API de tarefas:** há uma implementação inicial em memória para listar, consultar por ID e criar tarefas.
-- **API de categorias:** há uma implementação inicial em memória com categorias de exemplo.
-- **Cliente Web:** há uma interface inicial para autenticar, carregar categorias, criar tarefa e atualizar a lista.
-- Criado um arquivo de exemplo de variáveis de ambiente, dependências Python e instruções de execução no README.
-- Definido um contrato inicial com endereços, rotas e formatos de dados em [contrato-api.md](contrato-api.md).
+## Divisão original e resultado
 
-**Importante:** existe uma base funcional para desenvolvimento, mas isso não significa que o fluxo completo já esteja validado nas máquinas do grupo ou do laboratório. Os dados das APIs são temporários e são apagados quando os processos são reiniciados.
+| Integrante / parte   | Responsabilidade original                 | Estado atual                                                                                                                          |
+| -------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Bruno — Gateway      | JWT, roteamento, HATEOAS, erros e Swagger | Implementado; testes automatizados cobrem autenticação, autorização, contrato público, HATEOAS, Swagger e indisponibilidade simulada. |
+| Patricia — tarefas   | Criar, listar e consultar tarefas         | Implementado em Django REST Framework, com persistência SQLite, validação, contrato público comum e testes.                           |
+| Gustavo — categorias | Listar categorias e definir IDs           | Implementado em FastAPI; IDs correspondem aos aceitos pela API de tarefas e existem testes.                                           |
+| Grupo — Cliente Web  | Tela de tarefas e integração              | Implementado; configurável para usar Gateway remoto.                                                                                  |
 
-## 3. Divisão de tarefas
+## Dependências entre os serviços
 
-| Pessoa / parte                  | Responsabilidade                                                                                     | De quem depende                                                                                                                                     | O que precisa combinar ou receber                                                                                                                                                            |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Bruno — Gateway**             | Autenticação JWT, encaminhamento às APIs, tratamento de erros, HATEOAS e documentação do Gateway.    | Para integrar de verdade, depende das rotas e respostas das APIs de tarefas e categorias. Pode desenvolver contra o contrato enquanto elas evoluem. | Confirmar que os endereços/portas permanecem os do contrato; combinar mudanças de rotas ou formatos antes de fazê-las; receber aviso quando cada serviço estiver disponível para integração. |
-| **Patricia — API de tarefas**   | Criar, listar e consultar tarefas; validar os dados recebidos.                                       | Precisa dos IDs estáveis das categorias definidos por Gustavo. Para o desenvolvimento inicial, pode usar os IDs de exemplo do contrato.             | Combinar com Gustavo os IDs; manter `category_id` como texto e usar os formatos e códigos HTTP documentados; avisar Bruno quando a API estiver pronta.                                       |
-| **Gustavo — API de categorias** | Manter a lista de categorias e disponibilizá-la pela API.                                            | Quase independente; precisa combinar os IDs com Patricia e informar os IDs usados ao restante do grupo.                                             | Definir com Patricia IDs fixos, como `estudo`, `trabalho` e `pessoal`; manter o formato `{ "id": "...", "name": "..." }`; avisar Bruno quando a rota estiver pronta.                         |
-| **Todos — Cliente Web**         | Construir e testar a interface para autenticar, listar tarefas, selecionar categoria e criar tarefa. | Para o fluxo completo, depende do contrato do Gateway; para testar ponta a ponta, precisa do Gateway e das duas APIs em execução.                   | Chamar somente o Gateway; usar o JWT retornado no cabeçalho Bearer; seguir os links `_links` recebidos; combinar alterações visuais e de integração para evitar sobrescrever trabalho.       |
+As APIs são executáveis independentes. A API de tarefas não faz uma chamada de rede à API de categorias; valida `category_id` contra a lista acordada localmente. O Gateway valida o JWT e encaminha a identidade do usuário à API de tarefas, que separa as listas por conta. Portanto, há dependência de contrato (os IDs precisam coincidir), não dependência de disponibilidade entre tarefas e categorias. A lista oficial de IDs e formatos está em [contrato-api.md](contrato-api.md).
 
-## 4. O que cada pessoa deve fazer
+## Verificações locais automatizadas
 
-### Bruno — Gateway
+Na raiz do repositório, execute:
 
-- [ ] Conferir no Swagger (`/docs`) as rotas de autenticação, tarefas e categorias.
-- [ ] Testar acesso às rotas protegidas sem token, com token inválido e com token válido.
-- [ ] Testar criação, listagem e consulta de tarefa usando as APIs reais, e não apenas respostas simuladas.
-- [ ] Conferir os links HATEOAS e garantir que o cliente consiga navegar usando esses links.
-- [ ] Testar e documentar o erro retornado quando uma API interna estiver indisponível.
-- [ ] Configurar endereços e CORS para a demonstração em rede, se cliente e servidor estiverem em máquinas diferentes.
-- [ ] Explicar na apresentação o papel do Gateway e como ele esconde as APIs internas do cliente.
+```powershell
+.\.venv\Scripts\python.exe -m pytest
+Push-Location services/tasks
+..\..\.venv\Scripts\python.exe manage.py test app
+Pop-Location
+```
 
-### Patricia — API de tarefas
+A suíte raiz verifica Gateway, categorias e integração HTTP real; os testes Django verificam modelo, validações e formato da API de tarefas.
 
-- [ ] Confirmar que `GET /tasks`, `GET /tasks/{id}` e `POST /tasks` seguem o contrato.
-- [ ] Garantir que a tarefa contenha `id`, `title`, `category_id` e `completed`.
-- [ ] Validar título e categoria recebidos e retornar erros HTTP apropriados para dados inválidos ou tarefa inexistente.
-- [ ] Combinar e usar os IDs de categorias definidos com Gustavo.
-- [ ] Testar a documentação automática da API em `/docs` e os casos de sucesso e erro.
-- [ ] Informar Bruno quando o serviço estiver pronto e disponível no endereço acordado.
+## Pendências que dependem do ambiente de apresentação
 
-### Gustavo — API de categorias
+- [ ] Executar os comandos do [guia de execução e apresentação](execucao-e-apresentacao.md) em todos os computadores que serão usados.
+- [ ] Configurar `web/config.js` com o endereço real do Gateway da máquina servidora.
+- [ ] Configurar `CORS_ORIGINS` com a origem real do cliente e abrir a porta 8000 no firewall, se a rede do laboratório permitir.
+- [ ] Fazer um ensaio presencial completo, incluindo login, criação de tarefa, seleção de categoria, Swagger, rejeição de chamada sem JWT e, se possível, indisponibilidade simulada.
+- [ ] Confirmar que o repositório GitHub está acessível ao professor e integrantes e enviar o link. Isso não pode ser confirmado ou executado apenas pelo código local.
 
-- [ ] Confirmar com Patricia a lista e os IDs permanentes das categorias.
-- [ ] Manter `GET /categories` retornando itens no formato `{ "id": "...", "name": "..." }`.
-- [ ] Manter o endpoint de verificação `GET /health`.
-- [ ] Testar a API e sua documentação em `/docs`.
-- [ ] Informar Patricia, Bruno e quem trabalha no cliente quando os IDs estiverem definidos e quando a API estiver pronta.
+## Observações de segurança e escopo
 
-### Todos — Cliente Web e integração
-
-- [ ] Confirmar que a tela obtém o token antes de chamar rotas protegidas.
-- [ ] Conferir que as chamadas usam `Authorization: Bearer <token>`.
-- [ ] Carregar categorias do Gateway e permitir selecioná-las ao criar uma tarefa.
-- [ ] Exibir tarefas, mensagens de carregamento, lista vazia e erros de conexão/autenticação.
-- [ ] Seguir os links HATEOAS recebidos do Gateway, sem usar endereços internos dos microserviços.
-- [ ] Testar o navegador com todos os processos iniciados simultaneamente.
-- [ ] Escolher quem fica responsável por cada ajuste visual ou funcional do cliente e integrar as mudanças por Git.
-
-## 5. Dependências principais e ordem de integração
-
-1. **Gustavo e Patricia definem os IDs de categoria.** Os IDs precisam ser estáveis para que `category_id` da tarefa corresponda a uma categoria existente.
-2. **Patricia e Gustavo implementam suas APIs em paralelo**, seguindo o contrato. Bruno pode continuar o Gateway usando as rotas já especificadas.
-3. **Bruno conecta e testa as APIs reais no Gateway.** Se um contrato precisar mudar, os três envolvidos devem combinar a mudança e atualizar a documentação.
-4. **O cliente integra com o Gateway.** A interface pode ser desenvolvida antes, mas o teste completo só acontece quando Gateway e serviços estiverem disponíveis.
-5. **Todos fazem o teste ponta a ponta** em um ambiente comum e corrigem problemas de endereço, porta, CORS, JWT ou formato de resposta.
-
-### Regra para alterações no contrato
-
-Não trocar nomes de campos, IDs, rotas, portas ou formatos unilateralmente. Se uma alteração for necessária, avisar as pessoas afetadas, atualizar [contrato-api.md](contrato-api.md) e só então adaptar as implementações.
-
-## 6. Pendências do grupo antes da entrega
-
-- [ ] Confirmar se as APIs continuam usando dados em memória ou se o grupo implementará persistência (por exemplo, SQLite). Persistência não é requisito explícito na divisão atual, mas sem ela os dados somem ao reiniciar os serviços.
-- [ ] Testar todas as rotas usando os serviços reais, além de validar os componentes separadamente.
-- [ ] Confirmar a configuração final de endereços, portas e CORS para a rede do laboratório. `127.0.0.1` aponta para a própria máquina e não serve como endereço de servidor para outro computador.
-- [ ] Definir como iniciar os componentes no laboratório e verificar que o cliente da máquina principal alcança o servidor.
-- [ ] Criar/publicar o repositório no GitHub e compartilhar o link com o professor e o grupo.
-- [ ] Garantir que arquivos secretos locais (`.env`) não sejam enviados ao GitHub; publicar somente o `.env.example` sem segredos reais.
-- [ ] Ensaiar a apresentação e permitir que outra pessoa teste o fluxo sem depender de explicações do desenvolvedor.
-
-## 7. Roteiro sugerido para validar a demonstração
-
-1. Iniciar API de tarefas, API de categorias, Gateway e servidor do cliente web.
-2. Abrir o cliente web e conectar usando as credenciais de demonstração configuradas localmente.
-3. Mostrar que categorias e tarefas são carregadas através do Gateway.
-4. Criar uma tarefa escolhendo uma categoria e confirmar que aparece na lista.
-5. Abrir o Swagger do Gateway e demonstrar as rotas documentadas.
-6. Mostrar que uma chamada sem JWT é recusada e explicar que o JWT é enviado pelo cliente.
-7. Explicar o uso dos links HATEOAS e as responsabilidades separadas dos dois microserviços.
-8. Opcionalmente, desligar um serviço para demonstrar a mensagem de indisponibilidade do Gateway.
-
-## 8. Observações sobre a autenticação atual
-
-A autenticação existente é simplificada para demonstração: um usuário e uma senha configurados por ambiente permitem emitir um JWT. As credenciais padrão são apenas exemplos locais, não representam cadastro de usuários nem devem ser usadas em produção. Antes da apresentação, o grupo deve configurar o segredo e as credenciais locais conforme combinado, sem publicar segredos reais no repositório.
+As credenciais `aluno` / `projeto123` e os segredos exemplificados são somente para demonstração. Novas contas são guardadas em `gateway/app/users.sqlite3` e suas senhas são derivadas com scrypt; não publique o `.env` real nem bancos SQLite locais. A autenticação não substitui uma solução de produção. A API de tarefas usa SQLite; as categorias permanecem estáticas no código, suficiente para o escopo de demonstração.

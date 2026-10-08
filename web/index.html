@@ -3,52 +3,117 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tarefas — REST Gateway</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="app.js" defer></script>
+  <title>Organizaê Parêa — tarefas do seu jeito</title>
+  <link rel="stylesheet" href="styles.css?v=task-play-12">
+  <script src="config.js?v=task-play-12"></script>
+  <script src="app.js?v=task-play-12" defer></script>
 </head>
 <body>
-  <main class="layout">
-    <header class="hero">
-      <span class="eyebrow">PROJETO REST · API GATEWAY</span>
-      <h1>Organize o que<br><span>precisa acontecer.</span></h1>
-      <p>Uma lista simples de tarefas, categorias e serviços conectados por um Gateway seguro.</p>
-    </header>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Organizaê Parêa — início">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 6.5h14M5 12h14M5 17.5h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="3" cy="6.5" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="17.5" r="1" fill="currentColor"/></svg>
+      </span>
+      <span class="brand-name">Organizaê Parêa</span>
+      <span class="brand-tag">NO SEU RITMO</span>
+    </a>
+    <div id="session-indicator" class="session-indicator" hidden>
+      <span class="online-dot" aria-hidden="true"></span>
+      <span id="connection-state">Conectado</span>
+      <button id="logout-button" class="nav-logout" type="button">Sair</button>
+    </div>
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Ativar tema escuro" title="Alternar tema">
+      <span class="theme-toggle-icon" aria-hidden="true">☾</span>
+      <span class="theme-toggle-label">Tema escuro</span>
+    </button>
+  </header>
 
-    <section class="panel login-panel" aria-labelledby="login-title">
-      <div class="section-heading">
-        <div><span class="step">01</span><h2 id="login-title">Conectar ao Gateway</h2></div>
-        <span id="connection-state" class="status">Desconectado</span>
+  <main id="auth-view" class="auth-view">
+    <aside class="auth-story" aria-label="Sobre o organizador de tarefas">
+      <span class="story-kicker"><span class="story-spark" aria-hidden="true">✳</span> MAIS ESPAÇO PARA O QUE IMPORTA</span>
+      <h2>Tire da cabeça.<br><em>Coloque no Parêa.</em></h2>
+      <p>Organize suas tarefas do seu jeito, escolha onde cada uma se encaixa e transforme ideias em coisas feitas.</p>
+      <div class="story-art" aria-hidden="true">
+        <div class="art-sun"></div>
+        <div class="art-note note-back"><span class="note-check">✓</span><span class="note-line long"></span><span class="note-line short"></span></div>
+        <div class="art-note note-front"><span class="note-check checked">✓</span><span class="note-copy"><strong>Planejar a semana</strong><small>Organização pessoal</small></span><span class="note-star">✳</span></div>
+        <div class="art-sticker">feito<br>com calma</div>
       </div>
+      <div class="story-caption"><span class="caption-rule"></span> Pequenos passos também contam.</div>
+    </aside>
+
+    <section class="auth-card" aria-labelledby="login-title">
+      <div class="auth-heading">
+        <h1 id="login-title">Acesse suas tarefas</h1>
+        <p id="account-hint">Entre para organizar suas tarefas por categoria.</p>
+      </div>
+
+      <div class="auth-tabs" role="tablist" aria-label="Acesso à conta">
+        <a id="login-tab" class="auth-tab active" href="?mode=login" role="tab" aria-selected="true">Entrar</a>
+        <a id="account-switch-button" class="auth-tab" href="?mode=register" role="tab" aria-selected="false">Criar conta</a>
+      </div>
+
       <form id="login-form" class="login-form">
-        <label>Usuário<input id="username" autocomplete="username" value="aluno" required></label>
-        <label>Senha<input id="password" type="password" autocomplete="current-password" value="projeto123" required></label>
-        <label class="gateway-field">Endereço do Gateway<input id="gateway-url" type="url" value="http://127.0.0.1:8000" required></label>
-        <button type="submit" class="button button-dark">Conectar</button>
+        <label>Usuário
+          <input id="username" autocomplete="username" minlength="3" maxlength="32" placeholder="Seu nome de usuário" required>
+        </label>
+        <label id="email-field" hidden>E-mail
+          <input id="email" type="email" autocomplete="email" maxlength="254" placeholder="voce@exemplo.com">
+        </label>
+        <label>Senha
+          <input id="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" placeholder="Mínimo de 8 caracteres" required>
+        </label>
+        <button id="auth-submit" type="submit" class="button button-accent">Entrar</button>
       </form>
-      <p class="hint">Credenciais locais de demonstração. O Gateway emite um token JWT para as chamadas protegidas.</p>
+      <p id="message" class="message auth-message" role="status" aria-live="polite"></p>
+      <p class="auth-footnote">Suas tarefas ficam privadas na sua conta.</p>
     </section>
+  </main>
 
-    <section class="panel task-panel" aria-labelledby="task-title">
-      <div class="section-heading">
-        <div><span class="step">02</span><h2 id="task-title">Nova tarefa</h2></div>
-      </div>
-      <form id="task-form" class="task-form">
-        <label class="title-field">O que você precisa fazer?<input id="task-name" maxlength="120" placeholder="Ex.: Finalizar a documentação" required></label>
-        <label>Categoria<select id="category-select" required><option value="">Conecte-se para carregar...</option></select></label>
-        <button type="submit" class="button button-accent">Adicionar tarefa <span aria-hidden="true">＋</span></button>
-      </form>
-    </section>
+  <main id="tasks-view" class="tasks-view" hidden>
+    <div class="tasks-shell">
+      <header class="tasks-heading">
+        <div>
+          <span class="eyebrow">SEU ESPAÇO</span>
+          <h1>Organize o que <span>precisa acontecer.</span></h1>
+          <p>Um passo de cada vez. Suas tarefas, do seu jeito.</p>
+        </div>
+      </header>
 
-    <section class="panel list-panel" aria-labelledby="list-title">
-      <div class="section-heading">
-        <div><span class="step">03</span><h2 id="list-title">Sua lista</h2></div>
-        <button id="refresh-button" class="text-button" type="button" disabled>Atualizar ↻</button>
-      </div>
-      <p id="message" class="message" role="status">Conecte-se ao Gateway para carregar as tarefas.</p>
-      <ul id="task-list" class="task-list"></ul>
-    </section>
-    <footer>Cliente Web → Gateway REST → APIs internas de tarefas e categorias</footer>
+      <section class="panel task-panel" aria-labelledby="task-title">
+        <div class="section-heading">
+          <div><span class="step">＋</span><h2 id="task-title">Nova tarefa</h2></div>
+        </div>
+        <form id="task-form" class="task-form">
+          <label class="title-field">O que você precisa fazer?
+            <input id="task-name" maxlength="120" placeholder="Ex.: Finalizar a documentação" required>
+          </label>
+          <label>Categoria
+            <select id="category-select" required><option value="">Carregando categorias...</option></select>
+          </label>
+          <button type="submit" class="button button-accent">Adicionar tarefa <span aria-hidden="true">＋</span></button>
+        </form>
+      </section>
+
+      <section class="panel list-panel" aria-labelledby="list-title">
+        <div class="section-heading">
+          <div><span class="step">✓</span><h2 id="list-title">Sua lista</h2></div>
+          <button id="refresh-button" class="text-button" type="button" disabled>Atualizar ↻</button>
+        </div>
+        <div id="list-summary" class="list-summary" hidden>
+          <div class="progress-copy"><span id="progress-label">Seu progresso</span><strong id="progress-count">0 de 0 feitas</strong></div>
+          <div class="progress-track" role="progressbar" aria-label="Progresso das tarefas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="progress-fill"></span></div>
+        </div>
+        <nav id="task-filters" class="task-filters" aria-label="Filtrar tarefas" hidden>
+          <button class="filter-chip active" type="button" data-filter="all">Todas <span id="all-count">0</span></button>
+          <button class="filter-chip" type="button" data-filter="pending">A fazer <span id="pending-count">0</span></button>
+          <button class="filter-chip" type="button" data-filter="completed">Feitas <span id="completed-count">0</span></button>
+        </nav>
+        <p id="task-message" class="message" role="status" aria-live="polite">Carregando tarefas...</p>
+        <ul id="task-list" class="task-list"></ul>
+      </section>
+      <footer>Pequenas tarefas também levam a grandes conquistas.</footer>
+    </div>
   </main>
 </body>
 </html>

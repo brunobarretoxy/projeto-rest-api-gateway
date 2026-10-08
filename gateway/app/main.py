@@ -14,8 +14,18 @@ from pydantic import BaseModel, Field
 
 load_dotenv()
 
+from . import user_store
+
 TASKS_API_URL = os.getenv("TASKS_API_URL", "http://127.0.0.1:8001").rstrip("/")
 CATEGORIES_API_URL = os.getenv("CATEGORIES_API_URL", "http://127.0.0.1:8002").rstrip("/")
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5500,http://127.0.0.1:5500",
+    ).split(",")
+    if origin.strip()
+]
 JWT_SECRET = os.getenv("JWT_SECRET", "somente-para-desenvolvimento-nao-usar-em-producao")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
@@ -32,23 +42,40 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5500", "http://127.0.0.1:5500"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
-bearer = HTTPBearer(auto_error=False)
+bearer = HTTPBearer(
+    auto_error=False,
+    description="Envie o JWT obtido em /auth/token ou /auth/register como Bearer token.",
+)
 
 
 class DemoCredentials(BaseModel):
-    username: str = Field(min_length=1)
-    password: str = Field(min_length=1)
+    username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_.-]+$")
+    password: str = Field(min_length=8, max_length=128)
+
+
+class UserRegistration(DemoCredentials):
+    """Credentials and contact email used to create a local account."""
+
+    email: str = Field(
+        min_length=6,
+        max_length=254,
+        pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$",
+    )
 
 
 class TaskInput(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     category_id: str = Field(min_length=1)
+
+
+class TaskCompletionInput(BaseModel):
+    completed: bool
 
 
 async def require_token(
@@ -101,15 +128,10 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "service": "gateway"}
 
 
-@app.post("/auth/demo-token", tags=["Autenticação"])
-async def create_demo_token(credentials: DemoCredentials) -> dict[str, Any]:
-    """Emite JWT de demonstração. Troque a autenticação simplificada em produção."""
-    if credentials.username != DEMO_USERNAME or credentials.password != DEMO_PASSWORD:
-        raise HTTPException(status_code=401, detail="Usuário ou senha incorretos")
-
+def issue_access_token(username: str) -> dict[str, Any]:
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=JWT_EXPIRE_MINUTES)
     token = jwt.encode(
-        {"sub": credentials.username, "exp": expires_at},
+        {"sub": username, "exp": expires_at},
         JWT_SECRET,
         algorithm=JWT_ALGORITHM,
     )
@@ -117,19 +139,74 @@ async def create_demo_token(credentials: DemoCredentials) -> dict[str, Any]:
         "access_token": token,
         "token_type": "bearer",
         "expires_in": JWT_EXPIRE_MINUTES * 60,
+        "user": {"username": username},
         "_links": {
             "tasks": gateway_link("/api/tasks"),
             "categories": gateway_link("/api/categories"),
+            "profile": gateway_link("/auth/me"),
         },
     }
 
 
-@app.get("/api/tasks", tags=["Tarefas"])
-async def list_tasks(_: dict[str, Any] = Depends(require_token)) -> dict[str, Any]:
-    tasks = await call_service("GET", f"{TASKS_API_URL}/tasks")
+@app.post(
+    "/auth/register",
+    status_code=status.HTTP_201_CREATED,
+    tags=["Autenticação"],
+    responses={409: {"description": "O nome de usuário já está cadastrado."}},
+)
+async def register(credentials: UserRegistration) -> dict[str, Any]:
+    """Cria conta local. Senhas são armazenadas usando scrypt, nunca em texto puro."""
+    user_store.ensure_demo_account(DEMO_USERNAME, DEMO_PASSWORD)
+    username = credentials.username.strip().lower()
+    if not user_store.create_user(username, credentials.email, credentials.password):
+        raise HTTPException(
+            status_code=409,
+            detail="Esse nome de usuário ou e-mail já está cadastrado",
+        )
+    return issue_access_token(username)
+
+
+@app.post(
+    "/auth/token",
+    tags=["Autenticação"],
+    responses={401: {"description": "Usuário ou senha incorretos."}},
+)
+@app.post(
+    "/auth/demo-token",
+    tags=["Autenticação"],
+    deprecated=True,
+    include_in_schema=False,
+)
+async def create_token(credentials: DemoCredentials) -> dict[str, Any]:
+    """Autentica uma conta cadastrada e emite JWT. /auth/demo-token é rota legada."""
+    user_store.ensure_demo_account(DEMO_USERNAME, DEMO_PASSWORD)
+    username = user_store.authenticate_user(credentials.username, credentials.password)
+    if username is None:
+        raise HTTPException(status_code=401, detail="Usuário ou senha incorretos")
+    return issue_access_token(username)
+
+
+@app.get("/auth/me", tags=["Autenticação"])
+async def current_user(claims: dict[str, Any] = Depends(require_token)) -> dict[str, Any]:
+    """Retorna a identidade associada ao JWT apresentado."""
+    return {"user": {"username": claims["sub"]}}
+
+
+@app.get(
+    "/api/tasks",
+    tags=["Tarefas"],
+    responses={401: {"description": "Token Bearer ausente, inválido ou expirado."}},
+)
+async def list_tasks(claims: dict[str, Any] = Depends(require_token)) -> dict[str, Any]:
+    tasks = await call_service(
+        "GET",
+        f"{TASKS_API_URL}/tasks",
+        headers={"X-User-Id": claims["sub"]},
+    )
     for task in tasks:
         task["_links"] = {
             "self": gateway_link(f"/api/tasks/{task['id']}"),
+            "completion": gateway_link(f"/api/tasks/{task['id']}", "PATCH"),
             "collection": gateway_link("/api/tasks"),
             "category": gateway_link("/api/categories"),
         }
@@ -143,29 +220,73 @@ async def list_tasks(_: dict[str, Any] = Depends(require_token)) -> dict[str, An
     }
 
 
-@app.get("/api/tasks/{task_id}", tags=["Tarefas"])
-async def get_task(task_id: int, _: dict[str, Any] = Depends(require_token)) -> dict[str, Any]:
-    task = await call_service("GET", f"{TASKS_API_URL}/tasks/{task_id}")
+@app.get(
+    "/api/tasks/{task_id}",
+    tags=["Tarefas"],
+    responses={401: {"description": "Token Bearer ausente, inválido ou expirado."}},
+)
+async def get_task(
+    task_id: int,
+    claims: dict[str, Any] = Depends(require_token),
+) -> dict[str, Any]:
+    task = await call_service(
+        "GET",
+        f"{TASKS_API_URL}/tasks/{task_id}",
+        headers={"X-User-Id": claims["sub"]},
+    )
     task["_links"] = {
         "self": gateway_link(f"/api/tasks/{task_id}"),
+        "completion": gateway_link(f"/api/tasks/{task_id}", "PATCH"),
         "collection": gateway_link("/api/tasks"),
         "category": gateway_link("/api/categories"),
     }
     return {"data": task}
 
 
-@app.post("/api/tasks", status_code=status.HTTP_201_CREATED, tags=["Tarefas"])
+@app.patch(
+    "/api/tasks/{task_id}",
+    tags=["Tarefas"],
+    responses={401: {"description": "Token Bearer ausente, inválido ou expirado."}},
+)
+async def update_task_completion(
+    task_id: int,
+    update: TaskCompletionInput,
+    claims: dict[str, Any] = Depends(require_token),
+) -> dict[str, Any]:
+    task = await call_service(
+        "PATCH",
+        f"{TASKS_API_URL}/tasks/{task_id}",
+        json=update.model_dump(),
+        headers={"X-User-Id": claims["sub"]},
+    )
+    task["_links"] = {
+        "self": gateway_link(f"/api/tasks/{task_id}"),
+        "completion": gateway_link(f"/api/tasks/{task_id}", "PATCH"),
+        "collection": gateway_link("/api/tasks"),
+        "category": gateway_link("/api/categories"),
+    }
+    return {"data": task}
+
+
+@app.post(
+    "/api/tasks",
+    status_code=status.HTTP_201_CREATED,
+    tags=["Tarefas"],
+    responses={401: {"description": "Token Bearer ausente, inválido ou expirado."}},
+)
 async def create_task(
     task_input: TaskInput,
-    _: dict[str, Any] = Depends(require_token),
+    claims: dict[str, Any] = Depends(require_token),
 ) -> dict[str, Any]:
     task = await call_service(
         "POST",
         f"{TASKS_API_URL}/tasks",
         json=task_input.model_dump(),
+        headers={"X-User-Id": claims["sub"]},
     )
     task["_links"] = {
         "self": gateway_link(f"/api/tasks/{task['id']}"),
+        "completion": gateway_link(f"/api/tasks/{task['id']}", "PATCH"),
         "collection": gateway_link("/api/tasks"),
         "category": gateway_link("/api/categories"),
     }
@@ -175,7 +296,11 @@ async def create_task(
     }
 
 
-@app.get("/api/categories", tags=["Categorias"])
+@app.get(
+    "/api/categories",
+    tags=["Categorias"],
+    responses={401: {"description": "Token Bearer ausente, inválido ou expirado."}},
+)
 async def list_categories(_: dict[str, Any] = Depends(require_token)) -> dict[str, Any]:
     categories = await call_service("GET", f"{CATEGORIES_API_URL}/categories")
     for category in categories:

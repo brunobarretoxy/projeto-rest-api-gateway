@@ -7,6 +7,9 @@ venv/
 
 # Secrets and local configuration
 .env
+gateway/app/users.sqlite3
+gateway/app/users.sqlite3-shm
+gateway/app/users.sqlite3-wal
 
 # Editors / OS
 .vscode/

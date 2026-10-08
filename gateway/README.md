@@ -1,4 +1,4 @@
-# Responsabilidade de Bruno — Gateway
+# Organizaê Parêa — responsabilidade de Bruno (Gateway)
 
 O Gateway é o único ponto de entrada do cliente: emite JWT de demonstração, valida o bearer token, encaminha chamadas para as APIs internas, traduz indisponibilidade dos serviços e adiciona links HATEOAS.
 
