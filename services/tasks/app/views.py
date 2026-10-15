@@ -102,3 +102,22 @@ class TaskDetailView(APIView):
         tarefa.concluida = serializer.validated_data["completed"]
         tarefa.save(update_fields=["concluida"])
         return Response(TaskSerializer(tarefa).data)
+
+    @extend_schema(
+        operation_id="tasks_destroy",
+        responses={204: None, 404: dict},
+    )
+    def delete(self, request, task_id):
+        try:
+            tarefa = Task.objects.get(
+                id=task_id,
+                owner_id=request_owner_id(request),
+            )
+        except Task.DoesNotExist:
+            return Response(
+                {"detail": "Tarefa não encontrada."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        tarefa.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -28,7 +28,7 @@ Gateway FastAPI :8000
 
 - **Cliente Web:** exibe a interface; não acessa diretamente as APIs internas.
 - **Gateway:** ponto de entrada público. Faz cadastro/login, emite e valida JWT, encaminha as chamadas, padroniza parte das respostas e cria links HATEOAS.
-- **API de tarefas:** cria, lista, consulta e altera o estado concluído das tarefas. Persiste os registros em SQLite e filtra pelo proprietário recebido do Gateway.
+- **API de tarefas:** cria, lista, consulta, altera o estado concluído e exclui tarefas. Persiste os registros em SQLite e filtra pelo proprietário recebido do Gateway.
 - **API de categorias:** disponibiliza a lista estável de categorias.
 
 As portas diferentes permitem executar esses processos na mesma máquina durante o desenvolvimento. As pastas organizam o código; é o fato de cada serviço ser executado como processo/servidor separado que estabelece a separação de execução.
@@ -138,7 +138,7 @@ Estas são as perguntas mais diretamente ligadas ao foco do trabalho. Vale prati
 
 #### “Que operações o Gateway publica e para que serve cada método?”
 
-> “`POST /auth/register` cria conta e emite token; `POST /auth/token` autentica e emite token. Com token, `GET /api/tasks` lista, `POST /api/tasks` cria, `GET /api/tasks/{id}` consulta e `PATCH /api/tasks/{id}` altera o estado concluído. `GET /api/categories` lista categorias. GET consulta, POST cria e PATCH altera parcialmente um recurso.”
+> “`POST /auth/register` cria conta e emite token; `POST /auth/token` autentica e emite token. Com token, `GET /api/tasks` lista, `POST /api/tasks` cria, `GET /api/tasks/{id}` consulta, `PATCH /api/tasks/{id}` altera o estado concluído e `DELETE /api/tasks/{id}` exclui a tarefa do usuário. `GET /api/categories` lista categorias. GET consulta, POST cria, PATCH altera parcialmente e DELETE remove um recurso.”
 
 #### “Quais são as APIs internas e por que são separadas?”
 

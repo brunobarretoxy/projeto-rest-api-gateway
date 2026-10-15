@@ -22,6 +22,7 @@ class TaskApiContractTests(APITestCase):
         schema = json.loads(schema_response.content)
         self.assertIn("/tasks", schema["paths"])
         self.assertIn("/tasks/{task_id}", schema["paths"])
+        self.assertIn("delete", schema["paths"]["/tasks/{task_id}"])
         self.assertEqual(docs_response.status_code, status.HTTP_200_OK)
 
     def test_create_task_uses_shared_api_field_names(self):
@@ -131,3 +132,26 @@ class TaskApiContractTests(APITestCase):
         response = self.client.get("/tasks/999")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_owner_can_delete_task_but_other_user_cannot(self):
+        task = Task.objects.create(
+            owner_id="conta-a",
+            titulo="Apagar tarefa",
+            categoria_id="estudo",
+        )
+        task_id = task.id
+
+        other_user_response = self.client.delete(
+            f"/tasks/{task_id}",
+            HTTP_X_USER_ID="conta-b",
+        )
+        self.assertEqual(other_user_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(Task.objects.filter(id=task_id).exists())
+
+        owner_response = self.client.delete(
+            f"/tasks/{task_id}",
+            HTTP_X_USER_ID="conta-a",
+        )
+
+        self.assertEqual(owner_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Task.objects.filter(id=task_id).exists())

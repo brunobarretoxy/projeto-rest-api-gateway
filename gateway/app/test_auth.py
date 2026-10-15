@@ -136,6 +136,20 @@ def test_protected_routes_reject_missing_and_invalid_tokens():
             assert response.status_code == 401
 
 
+def test_cors_allows_browser_preflight_for_delete():
+    response = client.options(
+        "/api/tasks/12",
+        headers={
+            "Origin": "http://127.0.0.1:5500",
+            "Access-Control-Request-Method": "DELETE",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "DELETE" in response.headers["access-control-allow-methods"]
+
+
 def test_valid_token_can_access_protected_services_and_openapi_documents_bearer():
     token_response = client.post("/auth/token", json=demo_credentials())
     headers = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
@@ -150,6 +164,10 @@ def test_valid_token_can_access_protected_services_and_openapi_documents_bearer(
     assert tasks_response.status_code == 200
     assert tasks_response.json()["data"][0]["title"] == "Estudar"
     assert tasks_response.json()["data"][0]["_links"]["self"]["href"] == "/api/tasks/3"
+    assert tasks_response.json()["data"][0]["_links"]["delete"] == {
+        "href": "/api/tasks/3",
+        "method": "DELETE",
+    }
     assert categories_response.status_code == 200
     assert categories_response.json()["data"][0]["id"] == "estudo"
     assert call_service.await_count == 2
@@ -157,5 +175,23 @@ def test_valid_token_can_access_protected_services_and_openapi_documents_bearer(
     schema = client.get("/openapi.json").json()
     assert schema["components"]["securitySchemes"]["HTTPBearer"]["scheme"] == "bearer"
     assert schema["paths"]["/api/tasks"]["get"]["security"]
+    assert schema["paths"]["/api/tasks/{task_id}"]["delete"]["security"]
     assert "/auth/register" in schema["paths"]
     assert "/auth/token" in schema["paths"]
+
+
+def test_delete_task_requires_token_and_returns_no_content():
+    assert client.delete("/api/tasks/12").status_code == 401
+
+    token_response = client.post("/auth/token", json=demo_credentials())
+    headers = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
+    with patch("gateway.app.main.call_service", new_callable=AsyncMock) as call_service:
+        response = client.delete("/api/tasks/12", headers=headers)
+
+    assert response.status_code == 204
+    assert response.content == b""
+    call_service.assert_awaited_once_with(
+        "DELETE",
+        f"{gateway_main.TASKS_API_URL}/tasks/12",
+        headers={"X-User-Id": gateway_main.DEMO_USERNAME},
+    )

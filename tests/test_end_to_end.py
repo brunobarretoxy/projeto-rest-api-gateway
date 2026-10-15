@@ -202,6 +202,8 @@ def test_gateway_to_real_microservices_flow(running_stack: dict[str, str]) -> No
     assert created_body["data"]["category_id"] == "estudo"
     assert created_body["data"]["completed"] is False
     assert created_body["data"]["_links"]["completion"]["method"] == "PATCH"
+    delete_link = created_body["data"]["_links"]["delete"]
+    assert delete_link["method"] == "DELETE"
     detail_link = created_body["_links"]["self"]["href"]
 
     completed = httpx.patch(
@@ -234,6 +236,26 @@ def test_gateway_to_real_microservices_flow(running_stack: dict[str, str]) -> No
     other_listing = httpx.get(f"{base_url}/api/tasks", headers=other_headers, timeout=3)
     assert other_listing.status_code == 200, other_listing.text
     assert other_listing.json()["data"] == []
+
+    forbidden_delete = httpx.delete(
+        f"{base_url}{delete_link['href']}",
+        headers=other_headers,
+        timeout=3,
+    )
+    assert forbidden_delete.status_code == 404, forbidden_delete.text
+
+    deleted = httpx.delete(
+        f"{base_url}{delete_link['href']}",
+        headers=headers,
+        timeout=3,
+    )
+    assert deleted.status_code == 204, deleted.text
+    missing_after_delete = httpx.get(
+        f"{base_url}{detail_link}",
+        headers=headers,
+        timeout=3,
+    )
+    assert missing_after_delete.status_code == 404, missing_after_delete.text
 
     invalid_category = httpx.post(
         f"{base_url}/api/tasks",

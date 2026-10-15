@@ -154,6 +154,12 @@ function renderTasks(tasks) {
     toggle.setAttribute('aria-pressed', String(Boolean(task.completed)));
     toggle.textContent = task.completed ? '✓' : '';
     toggle.addEventListener('click', () => toggleTask(task));
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'task-delete';
+    deleteButton.type = 'button';
+    deleteButton.textContent = 'Excluir';
+    deleteButton.setAttribute('aria-label', `Excluir ${task.title}`);
+    deleteButton.addEventListener('click', () => deleteTask(task));
     const title = document.createElement('span');
     title.className = 'task-name';
     title.textContent = task.title;
@@ -163,7 +169,7 @@ function renderTasks(tasks) {
     const content = document.createElement('div');
     content.className = 'task-content';
     content.append(title, category);
-    item.append(toggle, content);
+    item.append(toggle, content, deleteButton);
     taskList.append(item);
   }
 }
@@ -179,6 +185,23 @@ async function toggleTask(task) {
       body: JSON.stringify({ completed: !task.completed }),
     });
     await loadTasks();
+  } catch (error) {
+    setMessage(error.message, true);
+  }
+}
+
+async function deleteTask(task) {
+  const deleteLink = task._links?.delete;
+  if (!deleteLink) {
+    setMessage('Não encontrei o link para excluir esta tarefa.', true);
+    return;
+  }
+  if (!window.confirm(`Deseja excluir a tarefa "${task.title}"?`)) return;
+
+  try {
+    await gatewayRequest(deleteLink);
+    await loadTasks();
+    setMessage('Tarefa excluída.');
   } catch (error) {
     setMessage(error.message, true);
   }

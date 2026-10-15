@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 import jwt
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
@@ -44,7 +44,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -207,6 +207,7 @@ async def list_tasks(claims: dict[str, Any] = Depends(require_token)) -> dict[st
         task["_links"] = {
             "self": gateway_link(f"/api/tasks/{task['id']}"),
             "completion": gateway_link(f"/api/tasks/{task['id']}", "PATCH"),
+            "delete": gateway_link(f"/api/tasks/{task['id']}", "DELETE"),
             "collection": gateway_link("/api/tasks"),
             "category": gateway_link("/api/categories"),
         }
@@ -237,6 +238,7 @@ async def get_task(
     task["_links"] = {
         "self": gateway_link(f"/api/tasks/{task_id}"),
         "completion": gateway_link(f"/api/tasks/{task_id}", "PATCH"),
+        "delete": gateway_link(f"/api/tasks/{task_id}", "DELETE"),
         "collection": gateway_link("/api/tasks"),
         "category": gateway_link("/api/categories"),
     }
@@ -262,10 +264,32 @@ async def update_task_completion(
     task["_links"] = {
         "self": gateway_link(f"/api/tasks/{task_id}"),
         "completion": gateway_link(f"/api/tasks/{task_id}", "PATCH"),
+        "delete": gateway_link(f"/api/tasks/{task_id}", "DELETE"),
         "collection": gateway_link("/api/tasks"),
         "category": gateway_link("/api/categories"),
     }
     return {"data": task}
+
+
+@app.delete(
+    "/api/tasks/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["Tarefas"],
+    responses={
+        401: {"description": "Token Bearer ausente, inválido ou expirado."},
+        404: {"description": "Tarefa não encontrada para este usuário."},
+    },
+)
+async def delete_task(
+    task_id: int,
+    claims: dict[str, Any] = Depends(require_token),
+) -> Response:
+    await call_service(
+        "DELETE",
+        f"{TASKS_API_URL}/tasks/{task_id}",
+        headers={"X-User-Id": claims["sub"]},
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.post(
@@ -287,6 +311,7 @@ async def create_task(
     task["_links"] = {
         "self": gateway_link(f"/api/tasks/{task['id']}"),
         "completion": gateway_link(f"/api/tasks/{task['id']}", "PATCH"),
+        "delete": gateway_link(f"/api/tasks/{task['id']}", "DELETE"),
         "collection": gateway_link("/api/tasks"),
         "category": gateway_link("/api/categories"),
     }

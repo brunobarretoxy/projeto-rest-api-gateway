@@ -188,6 +188,8 @@ h2 { margin: 0; color: var(--ink); font: 700 17px 'Manrope', sans-serif; letter-
 .task-check { width: 22px; height: 22px; flex: none; display: grid; place-items: center; padding: 0; border: 1.5px solid #b9c5bc; border-radius: 7px; background: transparent; color: white; cursor: pointer; font-size: 13px; font-weight: 800; transition: background .18s, border-color .18s, transform .18s; }
 .task-check:hover { border-color: var(--coral); transform: scale(1.08); }
 .task-item.is-completed .task-check { border-color: #6a927d; background: #6a927d; }
+.task-delete { flex: none; padding: 6px 9px; border: 1px solid color-mix(in srgb, var(--coral) 35%, var(--task-border)); border-radius: 7px; background: transparent; color: var(--coral-dark); cursor: pointer; font-size: 11px; font-weight: 700; transition: background .18s, border-color .18s; }
+.task-delete:hover { border-color: var(--coral); background: color-mix(in srgb, var(--coral) 10%, var(--input-surface)); }
 .task-content { min-width: 0; flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .task-name { color: var(--ink); font-size: 13px; font-weight: 600; transition: color .18s; }
 .task-item.is-completed .task-name { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1.5px; }
